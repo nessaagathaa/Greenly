@@ -8,32 +8,34 @@ volumes:
   mysql_data:
   mongo_data:
   redis_data:
+  core_node_modules:
+  catalog_node_modules:
+  ml_venv:
+  go_mod_cache:
 
 services:
+
   # ==============================
-  # Traefik Reverse Proxy
+  # TRAEFIK API GATEWAY
   # ==============================
   traefik:
     image: traefik:v2.11
-    container_name: traefik
     command:
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network=greenly_network"
-      - "--providers.file.filename=/etc/traefik/dynamic.yml"
       - "--entrypoints.web.address=:80"
     ports:
       - "80:80"
-      - "8080:8080"  # Traefik dashboard
+      - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml
     networks:
       - greenly_network
 
   # ==============================
-  # Databases
+  # DATABASES
   # ==============================
   mysql:
     image: mysql:8.0
@@ -43,6 +45,8 @@ services:
       MYSQL_DATABASE: greenly_core
       MYSQL_USER: greenly
       MYSQL_PASSWORD: greenly
+    ports:
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
@@ -54,6 +58,8 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: root
+    ports:
+      - "27017:27017"
     volumes:
       - mongo_data:/data/db
     networks:
@@ -61,16 +67,16 @@ services:
 
   redis:
     image: redis:7
-    container_name: redis
     restart: always
-    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
       - greenly_network
 
   # ==============================
-  # Services
+  # CORE SERVICE (NODE)
   # ==============================
   core-service:
     build:
@@ -78,7 +84,7 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ../services/core-service:/app
-      - /app/node_modules
+      - core_node_modules:/app/node_modules
     depends_on:
       - mysql
       - redis
@@ -92,41 +98,31 @@ services:
       REDIS_PORT: 6379
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.core.rule=Host(`core.localhost`)"
+
+      # Router
+      - "traefik.http.routers.core.rule=PathPrefix(`/api/core`)"
       - "traefik.http.routers.core.entrypoints=web"
+
+      # Service port inside container
       - "traefik.http.services.core.loadbalancer.server.port=3000"
-      - "traefik.http.routers.core.middlewares=security-headers@file,rate-limit@file"
+
+      # Strip /api/core
+      - "traefik.http.middlewares.core-strip.stripprefix.prefixes=/api/core"
+      - "traefik.http.routers.core.middlewares=core-strip"
+
     networks:
       - greenly_network
 
-  catalog-service:
-    build:
-      context: ../services/catalog-service
-      dockerfile: Dockerfile.dev
-    volumes:
-      - ../services/catalog-service:/app
-    depends_on:
-      - mongodb
-      - redis
-    environment:
-      MONGO_URI: mongodb://root:root@mongodb:27017/?authSource=admin
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.catalog.rule=Host(`catalog.localhost`)"
-      - "traefik.http.routers.catalog.entrypoints=web"
-      - "traefik.http.services.catalog.loadbalancer.server.port=8080"
-      - "traefik.http.routers.catalog.middlewares=security-headers@file,rate-limit@file"
-    networks:
-      - greenly_network
-
+  # ==============================
+  # ML ENGINE (FASTAPI)
+  # ==============================
   ml-engine:
     build:
       context: ../services/ml-engine
       dockerfile: Dockerfile.dev
     volumes:
       - ../services/ml-engine:/app
+      - ml_venv:/app/.venv
     depends_on:
       - redis
     environment:
@@ -134,9 +130,38 @@ services:
       REDIS_PORT: 6379
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.ml.rule=Host(`ml.localhost`)"
+
+      - "traefik.http.routers.ml.rule=PathPrefix(`/api/ml`)"
       - "traefik.http.routers.ml.entrypoints=web"
+
       - "traefik.http.services.ml.loadbalancer.server.port=8000"
-      - "traefik.http.routers.ml.middlewares=security-headers@file,rate-limit@file"
+
+      - "traefik.http.middlewares.ml-strip.stripprefix.prefixes=/api/ml"
+      - "traefik.http.routers.ml.middlewares=ml-strip"
+
+    networks:
+      - greenly_network
+
+  # ==============================
+  # CATALOG SERVICE (GO)
+  # ==============================
+  catalog-service:
+    build:
+      context: ../services/catalog-service
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ../services/catalog-service:/app
+      - go_mod_cache:/go/pkg/mod
+    labels:
+      - "traefik.enable=true"
+
+      - "traefik.http.routers.catalog.rule=PathPrefix(`/api/catalog`)"
+      - "traefik.http.routers.catalog.entrypoints=web"
+
+      - "traefik.http.services.catalog.loadbalancer.server.port=8081"
+
+      - "traefik.http.middlewares.catalog-strip.stripprefix.prefixes=/api/catalog"
+      - "traefik.http.routers.catalog.middlewares=catalog-strip"
+
     networks:
       - greenly_network
