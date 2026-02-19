@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as HomeRouteImport } from './routes/home'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
 import { Route as AuthRegiisterRouteImport } from './routes/auth/regiister'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -37,12 +43,14 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/home': typeof HomeRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/regiister': typeof AuthRegiisterRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/home': typeof HomeRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/regiister': typeof AuthRegiisterRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
@@ -50,12 +58,14 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/home': typeof HomeRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/regiister': typeof AuthRegiisterRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
+<<<<<<< HEAD
   fullPaths: '/' | '/auth/login' | '/auth/regiister' | '/demo/tanstack-query'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/auth/login' | '/auth/regiister' | '/demo/tanstack-query'
@@ -65,10 +75,17 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/regiister'
     | '/demo/tanstack-query'
+=======
+  fullPaths: '/' | '/home' | '/auth/login' | '/demo/tanstack-query'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '/home' | '/auth/login' | '/demo/tanstack-query'
+  id: '__root__' | '/' | '/home' | '/auth/login' | '/demo/tanstack-query'
+>>>>>>> 319e3e5daf054fa1fc410e43803c4efe5219b668
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  HomeRoute: typeof HomeRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegiisterRoute: typeof AuthRegiisterRoute
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
@@ -76,6 +93,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -109,6 +133,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  HomeRoute: HomeRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthRegiisterRoute: AuthRegiisterRoute,
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,
