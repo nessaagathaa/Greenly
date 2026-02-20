@@ -21,7 +21,6 @@ export const RegisterSchema = z.object({
 export type RegisterDTO = z.infer<typeof RegisterSchema>;
 
 
-// Login DTO
 export const LoginSchema = z.object({
   email: z.string().email('Invalid email format').toLowerCase(),
 

@@ -75,6 +75,16 @@ services:
     networks:
       - greenly_network
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: greenly_rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - greenly_network
+
   # ==============================
   # CORE SERVICE (NODE)
   # ==============================
@@ -88,6 +98,7 @@ services:
     depends_on:
       - mysql
       - redis
+      - rabbitmq
     environment:
       DATABASE_HOST: mysql
       DATABASE_PORT: 3306
@@ -96,6 +107,7 @@ services:
       DATABASE_NAME: greenly_core
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
     labels:
       - "traefik.enable=true"
 
@@ -123,11 +135,6 @@ services:
     volumes:
       - ../services/ml-engine:/app
       - ml_venv:/app/.venv
-    depends_on:
-      - redis
-    environment:
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
     labels:
       - "traefik.enable=true"
 
@@ -138,10 +145,33 @@ services:
 
       - "traefik.http.middlewares.ml-strip.stripprefix.prefixes=/api/ml"
       - "traefik.http.routers.ml.middlewares=ml-strip"
-
+    depends_on:
+      - redis
+      - rabbitmq
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
     networks:
       - greenly_network
 
+  ml-worker:
+    build:
+      context: ../services/ml-engine
+      dockerfile: Dockerfile.dev
+    command: uv run celery -A app.celery worker --loglevel=info
+    volumes:
+      - ../services/ml-engine:/app
+      - ml_venv:/app/.venv
+    depends_on:
+      - redis
+      - rabbitmq
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    networks:
+      - greenly_network
   # ==============================
   # CATALOG SERVICE (GO)
   # ==============================
@@ -149,6 +179,9 @@ services:
     build:
       context: ../services/catalog-service
       dockerfile: Dockerfile.dev
+    depends_on:
+       - rabbitmq
+       - mongodb
     volumes:
       - ../services/catalog-service:/app
       - go_mod_cache:/go/pkg/mod
@@ -162,6 +195,9 @@ services:
 
       - "traefik.http.middlewares.catalog-strip.stripprefix.prefixes=/api/catalog"
       - "traefik.http.routers.catalog.middlewares=catalog-strip"
-
+    environment:
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      MONGODB_URI: mongodb://root:root@mongodb:27017/?authSource=admin
+      
     networks:
       - greenly_network
