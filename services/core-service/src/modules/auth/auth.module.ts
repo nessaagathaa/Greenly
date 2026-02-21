@@ -6,7 +6,9 @@ import { UserRegisteredEvent } from './events/user.registered.event';
 import { DatabaseModule } from '../../libs/database/database.module';
 
 @Module({
-  imports:[DatabaseModule],
+  imports:[
+    DatabaseModule,
+  ],
   controllers: [AuthController],
   providers: [
     AuthRepository, 

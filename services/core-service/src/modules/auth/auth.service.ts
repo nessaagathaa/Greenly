@@ -10,28 +10,28 @@ export class AuthService {
     private readonly repo:AuthRepository
   ){}
 
-  // user register
   async register(dto: RegisterDTO) {
-    const existedUser=await this.repo.checkUserByEmail(dto.email)
+    const existedUser = await this.repo.checkUserByEmail(dto.email);
 
-    if(existedUser){
-      throw new AppError(
-        'Account already existed',
-        400
-      )
+    if (existedUser) {
+      throw new AppError('Account already existed', 400);
     }
-    
-    // hash pw
-    const hashed_pw=bcrypt.hashSync(dto.password, 10)
 
-    // created user
-    const registerUser=await this.repo.registerUser({
-      ...dto
-    })
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+    const user = await this.repo.registerUser({
+      ...dto,
+      password: hashedPassword,
+    });
+
 
     return {
       message: 'User registered',
-      data: dto,
+      data: {
+        id: user.id,
+        email: user.email,
+        name: dto.name,
+      },
     };
   }
 

@@ -35,7 +35,7 @@ export class AuthController {
   register(
     @Body(new ZodValidationPipe(RegisterSchema)) dto: RegisterDTO
   ) {
-    return ErrorHandler(() => this.authService.register(dto));
+    return ErrorHandler(async() => this.authService.register(dto));
   }
 
   @Post('login')

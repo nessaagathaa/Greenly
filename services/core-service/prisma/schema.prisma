@@ -60,6 +60,12 @@ enum LedgerType {
   CREDIT
   DEBIT
 }
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  PENDING_VERIFICATION
+}
 
 model User {
   id             Int       @id @default(autoincrement())
@@ -68,6 +74,9 @@ model User {
   isActive       Boolean   @default(true)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+  emailVerified   DateTime?   
+  status UserStatus @default(PENDING_VERIFICATION)
+  deletedAt DateTime?
 
   profile        UserProfile?
   shopMember     ShopMember[]
@@ -78,9 +87,10 @@ model User {
   ownedShop      Shop?     @relation("ShopOwner")
   followingShops ShopFollower[]
   events         UserEvent[]
-   tokens         AuthToken[] 
+  tokens         AuthToken[] 
 
   @@map("users")
+  @@index([email])
 }
 
 model UserProfile {

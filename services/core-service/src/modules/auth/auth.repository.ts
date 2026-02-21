@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { DatabaseService } from '../../libs/database/database.service';
 import { RegisterDTO } from "./auth.dto";
+import { randomAvatarUrl } from "../../common/utils/random-avatar";
 
 @Injectable()
 export class AuthRepository{
@@ -9,17 +10,21 @@ export class AuthRepository{
     ){}
 
     async registerUser(data:RegisterDTO){
+        const randomImage=randomAvatarUrl(data.name)
         const user=await this.db.user.create({
             data:{
                 email:data.email,
                 passwordHash:data.password,
                 profile:{
                     create:{
-                        fullName:data.name
+                        fullName:data.name,
+                        avatarUrl:randomImage
                     }
                 }
             },            
         })
+
+        return user
     }
 
     async checkUserByEmail(email:string){
