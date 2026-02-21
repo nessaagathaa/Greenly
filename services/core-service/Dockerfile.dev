@@ -4,11 +4,12 @@ WORKDIR /app
 
 RUN corepack enable
 
+# copy dependency files dulu (cache layer)
 COPY package.json pnpm-lock.yaml ./
+
 RUN pnpm install
 
+# ⭐ COPY SOURCE supaya container punya project valid
 COPY . .
-
-EXPOSE 3000
 
 CMD ["pnpm", "run", "start:dev"]

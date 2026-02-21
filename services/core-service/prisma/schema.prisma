@@ -15,6 +15,12 @@ enum ShopStatus {
   SUSPENDED
 }
 
+enum AuthTokenType {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+  REFRESH_TOKEN
+}
+
 enum ApplicationStatus {
   PENDING
   REVIEW
@@ -72,6 +78,7 @@ model User {
   ownedShop      Shop?     @relation("ShopOwner")
   followingShops ShopFollower[]
   events         UserEvent[]
+   tokens         AuthToken[] 
 
   @@map("users")
 }
@@ -96,6 +103,22 @@ model Role {
   users       UserRole[]
 
   @@map("roles")
+}
+
+model AuthToken {
+  id         String        @id @default(uuid())
+  userId     Int
+  tokenHash  String        @unique
+  type       AuthTokenType
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime      @default(now())
+
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@map("auth_tokens")
 }
 
 model Permission {
